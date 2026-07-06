@@ -821,21 +821,70 @@ wavesurfer.<span class="text-blue-400">on</span>(<span class="text-emerald-400">
     </div>
   </section>
 
-  <!-- Golden Sponsor Bar -->
-  <section class="py-8 bg-indigo-950/20 border-t border-indigo-900/30 text-center">
-    <p class="text-xs text-slate-400">
-      黄金赞助商 💖 <a href="https://www.closedcaptioncreator.com" target="_blank" class="text-indigo-300 font-medium hover:underline">Closed Caption Creator</a> —— 专业级的 Web 字幕编辑器与音视频打标套件
-    </p>
-  </section>
-
   <!-- Footer -->
-  <footer class="py-8 bg-slate-950 border-t border-white/5 text-center text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">
-      <p>© 2026 wavesurfer.js 中文官方文档与互动展示板. 保留所有权利.</p>
-      <div class="flex gap-6">
-        <a href="https://github.com/wavesurfer-js/wavesurfer.js" target="_blank" class="hover:text-slate-300 transition-colors">GitHub 仓库</a>
-        <a href="https://github.com/wavesurfer-js/wavesurfer.js/discussions" target="_blank" class="hover:text-slate-300 transition-colors">交流论坛</a>
-        <a href="https://github.com/sponsors/katspaugh" target="_blank" class="hover:text-slate-300 transition-colors">赞助项目</a>
+  <footer class="glass-panel border-t border-white/5 bg-slate-950/70 pt-12 pb-8 px-6 md:px-12 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(at_50%_100%,rgba(99,102,241,0.05)_0px,transparent_50%)] pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto relative z-10">
+      <!-- Top Tier -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 mb-10">
+        <!-- Brand Info -->
+        <div class="md:col-span-6 flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <img src="https://user-images.githubusercontent.com/381895/226091100-f5567a28-7736-4d37-8f84-e08f297b7e1a.png" alt="wavesurfer logo" class="h-6 w-auto opacity-80">
+            <span class="font-heading font-semibold text-base tracking-wide bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">wavesurfer.js 中文网</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed max-w-[40ch]">
+            一个交互式波形渲染与音频播放库，借助现代 Web Audio 技术与 Canvas 渲染，为您提供极其流畅、像素级精确的音频可视化交互界面。
+          </p>
+        </div>
+        
+        <!-- Links Groups -->
+        <div class="md:col-span-6 grid grid-cols-2 gap-6">
+          <!-- Col 1 -->
+          <div class="flex flex-col gap-3">
+            <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider font-heading">开发资源</h4>
+            <div class="flex flex-col gap-2.5 text-xs text-slate-400">
+              <a href="https://github.com/wavesurfer-js/wavesurfer.js" target="_blank" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                <span>GitHub 仓库</span>
+                <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+              </a>
+              <a href="https://github.com/wavesurfer-js/wavesurfer.js/discussions" target="_blank" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                <span>官方交流论坛</span>
+                <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+              </a>
+              <a href="https://wavesurfer.xyz" target="_blank" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                <span>Wavesurfer.js 官网</span>
+                <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Col 2 -->
+          <div class="flex flex-col gap-3">
+            <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider font-heading">快捷跳转</h4>
+            <div class="flex flex-col gap-2.5 text-xs text-slate-400">
+              <a href="#playground" class="hover:text-indigo-400 transition-colors">调音工作台</a>
+              <a href="#quickstart" class="hover:text-indigo-400 transition-colors">快速开始指南</a>
+              <a href="#api" class="hover:text-indigo-400 transition-colors">API 核心参考</a>
+              <a href="#plugins" class="hover:text-indigo-400 transition-colors">官方插件生态</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="h-px w-full bg-white/5 mb-6"></div>
+
+      <!-- Bottom Tier -->
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-slate-500">
+        <p>© 2026 wavesurfer.js 中文官方文档与互动展示板. 保留所有权利.</p>
+        <div class="flex items-center gap-6">
+          <span class="text-slate-600">Designed for developers</span>
+          <a href="#" class="hover:text-white transition-colors flex items-center gap-1">
+            <span>回到顶部</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>
+          </a>
+        </div>
       </div>
     </div>
   </footer>
