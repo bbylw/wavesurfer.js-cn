@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>wavesurfer.js 中文网 | 交互式音频波形可视化播放库</title>
+  <meta name="description" content="wavesurfer.js 中文官方文档与互动演示。使用 HTML5 Web Audio 和 Canvas 渲染高度可定制的音频波形，支持 Regions、Minimap、Timeline 等多种官方插件。">
+  
+  <!-- Tailwind CSS v4 -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style type="text/css">
+    @theme {
+      --font-sans: 'Plus Jakarta Sans', sans-serif;
+      --font-heading: 'Outfit', sans-serif;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0b0f19;
+      color: #f8fafc;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Gradient mesh background */
+    .bg-mesh {
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.08) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+    }
+
+    /* Glassmorphism utility */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    
+    .glass-input {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      transition: all 0.2s ease-in-out;
+    }
+    
+    .glass-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Custom range input styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      height: 6px;
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: 2px solid #ffffff;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Shadow DOM Part Customization */
+    #waveform ::part(cursor) {
+      border-left: 2px dashed #6366f1;
+      height: 100%;
+    }
+    
+    #waveform ::part(cursor):before {
+      content: '🏄';
+      position: absolute;
+      top: -24px;
+      left: -8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    #waveform:hover ::part(cursor):before {
+      opacity: 1;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-mesh min-h-screen text-slate-100 antialiased selection:bg-blue-500/30 selection:text-blue-200">
+
+  <!-- Header Nav -->
+  <header class="sticky top-0 z-40 w-full glass-panel border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <img src="https://user-images.githubusercontent.com/381895/226091100-f5567a28-7736-4d37-8f84-e08f297b7e1a.png" alt="wavesurfer logo" class="h-8 w-auto">
+      <span class="font-heading font-semibold text-lg tracking-wide bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">wavesurfer.js</span>
+      <span class="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-mono">v7 (中文网)</span>
+    </div>
+    <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+      <a href="#playground" class="hover:text-white transition-colors">互动演示</a>
+      <a href="#quickstart" class="hover:text-white transition-colors">快速开始</a>
+      <a href="#api" class="hover:text-white transition-colors">API 文档</a>
+      <a href="#plugins" class="hover:text-white transition-colors">官方插件</a>
+      <a href="#faq" class="hover:text-white transition-colors">常见问题</a>
+    </nav>
+    <div class="flex items-center gap-4">
+      <a href="https://github.com/wavesurfer-js/wavesurfer.js" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-xs bg-slate-800 hover:bg-slate-700 transition-colors text-white py-1.5 px-3.5 rounded-full border border-slate-700">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative pt-16 pb-12 px-6 md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12">
+    <div class="flex-1 text-left">
+      <div class="inline-flex items-center gap-2 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3.5 py-1 rounded-full text-xs font-semibold mb-6">
+        <span>基于官方 v7 最新架构重构</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter leading-none mb-6">
+        用 <span class="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">wavesurfer.js</span><br>
+        让音频看得见、控得精。
+      </h1>
+      <p class="text-slate-400 text-lg md:text-xl font-light leading-relaxed max-w-[55ch] mb-8">
+        wavesurfer.js 是一个轻量、交互式的 HTML5 波形渲染与播放库。无需任何复杂配置，即可在 Web 应用中提供极其流畅、高清晰度且极具现代感的波形可视化与编辑能力。
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="#playground" class="bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition-all text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 text-sm flex items-center gap-2">
+          <span>立即体验互动工作站</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </a>
+        <a href="#quickstart" class="bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all text-slate-200 hover:text-white font-medium px-6 py-3 rounded-xl border border-slate-700/80 text-sm">
+          <span>阅读中文开发文档</span>
+        </a>
+      </div>
+    </div>
+    
+    <div class="w-full md:w-[45%] flex flex-col gap-6">
+      <div class="glass-panel rounded-3xl p-6 relative overflow-hidden border border-white/10 shadow-2xl">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-3 h-3 rounded-full bg-red-500"></div>
+          <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+          <div class="w-3 h-3 rounded-full bg-green-500"></div>
+          <span class="text-xs text-slate-500 font-mono ml-2">Quick Start Demo</span>
+        </div>
+        <pre class="text-xs md:text-sm font-mono text-indigo-200 overflow-x-auto leading-relaxed">
+<span class="text-pink-500">import</span> WaveSurfer <span class="text-pink-500">from</span> <span class="text-emerald-400">'wavesurfer.js'</span>
+
+<span class="text-pink-500">const</span> wavesurfer = WaveSurfer.<span class="text-blue-400">create</span>({
+  container: <span class="text-emerald-400">'#waveform'</span>,
+  waveColor: <span class="text-emerald-400">'#4F4A85'</span>,
+  progressColor: <span class="text-emerald-400">'#383351'</span>,
+  url: <span class="text-emerald-400">'/audio.mp3'</span>,
+})
+
+wavesurfer.<span class="text-blue-400">on</span>(<span class="text-emerald-400">'ready'</span>, () => {
+  wavesurfer.<span class="text-blue-400">play</span>()
+})</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Workstation Showcase (The Exquisite Example) -->
+  <section id="playground" class="py-16 px-6 md:px-12 max-w-7xl mx-auto scroll-mt-20">
+    <div class="text-center max-w-3xl mx-auto mb-12">
+      <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+        波形交互调音工作站
+      </h2>
+      <p class="text-slate-400 text-base">
+        实时修改配置参数、管理选区插件、导入自定义音频，并即时同步生成可直接复制的初始化代码。
+      </p>
+    </div>
+
+    <!-- Main Workspace Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Waveform Player Card -->
+      <div class="lg:col-span-8 flex flex-col gap-6">
+        <div class="glass-panel rounded-3xl p-6 md:p-8 shadow-2xl relative">
+          <!-- Track Info Head -->
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                <!-- SVG Music Icon -->
+                <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0v11.25m0-11.25L9 9m0 0v11.25m0-11.25L3 12m0 0v7.5M12 9v12m0-12L6 12"/></svg>
+              </div>
+              <div>
+                <h3 id="track-title" class="font-heading font-semibold text-lg text-white">电子音乐主题 (本地预设 1)</h3>
+                <p id="track-artist" class="text-xs text-slate-400">本地音频 - 快速解码加载</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <span id="loading-spinner" class="hidden text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-3 py-1 rounded-full animate-pulse">
+                解析音频中...
+              </span>
+              <span class="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700/50" id="time-indicator">
+                <span id="current-time">00:00</span> / <span id="total-time">00:00</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Waveform Rendering Wrapper -->
+          <div class="relative min-h-[140px] bg-slate-950/40 rounded-2xl p-4 border border-slate-800/60 mb-4">
+            <!-- Main Waveform -->
+            <div id="waveform" class="w-full"></div>
+            <!-- Timeline Container -->
+            <div id="wave-timeline" class="w-full"></div>
+          </div>
+
+          <!-- Minimap Container -->
+          <div id="wave-minimap-container" class="mb-6 hidden">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-mono">全局导航缩略图 (Minimap)</p>
+            <div id="wave-minimap" class="rounded-xl overflow-hidden border border-slate-800 bg-slate-950/20"></div>
+          </div>
+
+          <!-- Playback Controls Bar -->
+          <div class="flex flex-wrap items-center justify-between gap-6 bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+            <!-- Play Pause & Skips -->
+            <div class="flex items-center gap-3">
+              <button id="btn-backward" class="p-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-slate-300 hover:text-white" title="后退 5 秒">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+              </button>
+              
+              <button id="btn-play-pause" class="bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-full active:scale-95 transition-all shadow-md shadow-indigo-600/30 flex items-center justify-center" title="播放/暂停">
+                <!-- Play Icon -->
+                <svg id="play-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <!-- Pause Icon (hidden by default) -->
+                <svg id="pause-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </button>
+              
+              <button id="btn-forward" class="p-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-slate-300 hover:text-white" title="前进 5 秒">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+              </button>
+            </div>
+
+            <!-- Zoom Control -->
+            <div class="flex items-center gap-3 flex-1 min-w-[150px] max-w-[240px]">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM7 10h6"/></svg>
+              <input type="range" id="zoom-slider" min="10" max="250" value="50" class="w-full" title="波形图缩放">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+            </div>
+
+            <!-- Volume Control -->
+            <div class="flex items-center gap-3">
+              <button id="btn-mute" class="p-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-slate-300 hover:text-white" title="静音切换">
+                <!-- Volume High Icon -->
+                <svg id="volume-high-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                <!-- Volume Mute Icon (hidden) -->
+                <svg id="volume-mute-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM3 9v6h4l5 5V4L7 9H3z"/></svg>
+              </button>
+              <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.8" class="w-20" title="音量大小">
+            </div>
+
+            <!-- Rate (Speed) Selector -->
+            <div class="flex items-center gap-1.5 bg-slate-950/40 p-1 rounded-xl border border-slate-800">
+              <button data-rate="0.5" class="rate-btn text-xs px-2 py-1 rounded-lg text-slate-400 hover:text-white transition-colors">0.5x</button>
+              <button data-rate="1" class="rate-btn text-xs px-2 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/20 transition-colors">1.0x</button>
+              <button data-rate="1.5" class="rate-btn text-xs px-2 py-1 rounded-lg text-slate-400 hover:text-white transition-colors">1.5x</button>
+              <button data-rate="2" class="rate-btn text-xs px-2 py-1 rounded-lg text-slate-400 hover:text-white transition-colors">2.0x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regions Management Panel -->
+        <div id="regions-card" class="glass-panel rounded-3xl p-6 md:p-8 shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <div>
+              <h3 class="font-heading font-semibold text-lg text-white">音频区域管理 (Regions Plugin)</h3>
+              <p class="text-xs text-slate-400">允许在波形图上创建并保存特定的选择范围，支持拖拽和拉伸。</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <button id="btn-drag-toggle" class="text-xs bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-slate-300 hover:text-white border border-slate-700 py-1.5 px-3.5 rounded-xl flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-500" id="drag-status-dot"></span>
+                <span id="drag-status-text">启用拖拽创建选区</span>
+              </button>
+              
+              <button id="btn-add-region" class="text-xs bg-blue-600/90 hover:bg-blue-600 active:scale-95 transition-all text-white py-1.5 px-3.5 rounded-xl flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                <span>随机创建选区</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty regions placeholder -->
+          <div id="regions-empty-placeholder" class="text-center py-8 bg-slate-950/20 rounded-2xl border border-dashed border-slate-800/80">
+            <svg class="w-8 h-8 text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 21m0 0l-.813-5.096L9 21zm0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            <p class="text-xs text-slate-500">当前没有定义任何区域。在波形图上拖拽鼠标，或者点击上方按钮随机创建一个。</p>
+          </div>
+
+          <!-- Regions List Table -->
+          <div id="regions-table-container" class="hidden overflow-x-auto">
+            <table class="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 font-mono text-xs uppercase">
+                  <th class="py-3 px-4">选区名称</th>
+                  <th class="py-3 px-4">开始位置</th>
+                  <th class="py-3 px-4">结束位置</th>
+                  <th class="py-3 px-4">持续时长</th>
+                  <th class="py-3 px-4 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="regions-tbody" class="divide-y divide-slate-800/50">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Controls & Dynamic Code -->
+      <div class="lg:col-span-4 flex flex-col gap-6">
+        
+        <!-- Tab Selectors for Preset & Parameters -->
+        <div class="glass-panel rounded-3xl p-6 shadow-2xl flex flex-col gap-6">
+          <div class="flex bg-slate-950/60 p-1 rounded-2xl border border-slate-800/80">
+            <button id="tab-btn-preset" class="flex-1 text-center text-xs py-2 rounded-xl bg-slate-900 text-white font-semibold shadow-inner border border-white/5 transition-all">音频预设</button>
+            <button id="tab-btn-param" class="flex-1 text-center text-xs py-2 rounded-xl text-slate-400 hover:text-white transition-all font-medium">配置面板</button>
+          </div>
+
+          <!-- Tab Content: Presets & Load File -->
+          <div id="tab-content-preset" class="flex flex-col gap-5">
+            <div>
+              <p class="text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">选择内置免跨域音频</p>
+              <div class="flex flex-col gap-2.5">
+                <button data-url="./viper.mp3" data-name="电子音乐主题 (本地预设 1)" data-artist="本地音频 - 快速解码加载" class="preset-track-btn w-full text-left p-3.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/30 text-slate-200 transition-all flex justify-between items-center">
+                  <div>
+                    <p class="text-xs font-semibold text-white">电子音乐主题 (本地预设 1)</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">本地音频流 - 格式: MP3</p>
+                  </div>
+                  <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20">使用中</span>
+                </button>
+                
+                <button data-url="./viper.mp3?track=2" data-name="电子主题 - 前奏测试 (本地预设 2)" data-artist="本地音频 - 快速解码加载" class="preset-track-btn w-full text-left p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-950/40 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex justify-between items-center">
+                  <div>
+                    <p class="text-xs font-semibold">电子主题 - 前奏测试 (本地预设 2)</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">参数切换测试 - 格式: MP3</p>
+                  </div>
+                </button>
+                
+                <button data-url="https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3" data-name="电子音乐主题 (云端备份)" data-artist="远程 CORS 备份音频" class="preset-track-btn w-full text-left p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-950/40 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex justify-between items-center">
+                  <div>
+                    <p class="text-xs font-semibold">电子音乐主题 (云端备份)</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">远程 CDN 链接 - 格式: MP3</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div class="h-px bg-slate-800/80"></div>
+
+            <!-- Upload Zone -->
+            <div>
+              <p class="text-xs text-slate-400 mb-3 font-semibold uppercase tracking-wider">或拖入本地音频 (免跨域限制)</p>
+              <div id="drop-zone" class="border-2 border-dashed border-slate-800 hover:border-blue-500/50 bg-slate-950/20 hover:bg-blue-500/5 rounded-2xl py-6 px-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center">
+                <input type="file" id="file-uploader" accept="audio/*" class="hidden">
+                <svg class="w-8 h-8 text-slate-600 mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0016.5 4.5H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z"/></svg>
+                <p class="text-xs font-medium text-slate-300">点击此处或将音频文件拖到这</p>
+                <p class="text-[10px] text-slate-500 mt-1">支持 MP3, WAV, OGG, M4A 等</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Content: Parameters -->
+          <div id="tab-content-param" class="hidden flex flex-col gap-4">
+            <!-- Colors -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5 block">未播放波形颜色</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" id="opt-wave-color" value="#4f46e5" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
+                  <span class="text-xs font-mono text-slate-400" id="lbl-wave-color">#4f46e5</span>
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5 block">已播放波形颜色</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" id="opt-progress-color" value="#3b82f6" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
+                  <span class="text-xs font-mono text-slate-400" id="lbl-progress-color">#3b82f6</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Height -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">波形整体高度</span>
+                <span class="text-slate-300 font-mono" id="lbl-height">128px</span>
+              </div>
+              <input type="range" id="opt-height" min="40" max="240" value="128" class="w-full">
+            </div>
+
+            <!-- Bar Width -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">波形条宽度 (0为连续线)</span>
+                <span class="text-slate-300 font-mono" id="lbl-bar-width">3px</span>
+              </div>
+              <input type="range" id="opt-bar-width" min="0" max="10" value="3" class="w-full">
+            </div>
+
+            <!-- Bar Gap -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">波形条间距</span>
+                <span class="text-slate-300 font-mono" id="lbl-bar-gap">2px</span>
+              </div>
+              <input type="range" id="opt-bar-gap" min="0" max="10" value="2" class="w-full">
+            </div>
+
+            <!-- Bar Radius -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">波形条圆角大小</span>
+                <span class="text-slate-300 font-mono" id="lbl-bar-radius">4px</span>
+              </div>
+              <input type="range" id="opt-bar-radius" min="0" max="10" value="4" class="w-full">
+            </div>
+
+            <!-- Plugin Toggles -->
+            <div class="h-px bg-slate-800/80 my-1"></div>
+            
+            <div class="flex flex-col gap-2">
+              <label class="text-[11px] font-mono uppercase tracking-wider text-slate-400 block mb-1">启用官方插件</label>
+              
+              <label class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/60 transition-colors cursor-pointer text-xs">
+                <span class="text-slate-300">Timeline (时间刻度尺)</span>
+                <input type="checkbox" id="chk-timeline" checked class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0">
+              </label>
+              
+              <label class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/60 transition-colors cursor-pointer text-xs">
+                <span class="text-slate-300">Minimap (滚动导航图)</span>
+                <input type="checkbox" id="chk-minimap" checked class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/60 transition-colors cursor-pointer text-xs">
+                <span class="text-slate-300">Hover (鼠标悬浮时间线)</span>
+                <input type="checkbox" id="chk-hover" checked class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0">
+              </label>
+
+              <label class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/60 transition-colors cursor-pointer text-xs">
+                <span class="text-slate-300">Regions (多区域标记)</span>
+                <input type="checkbox" id="chk-regions" checked class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Javascript Code Card -->
+        <div class="glass-panel rounded-3xl p-6 shadow-2xl flex flex-col gap-3 relative overflow-hidden">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-heading font-semibold text-white uppercase tracking-wider">实时 JavaScript 初始化代码</span>
+            <button id="btn-copy-code" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-slate-300 hover:text-white border border-slate-700/50 flex items-center justify-center" title="复制初始化配置代码">
+              <svg id="copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 006.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0015 2.25h-1.5a2.251 2.251 0 00-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5"/></svg>
+              <svg id="copy-success-icon" class="w-4 h-4 hidden text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </button>
+          </div>
+          
+          <div class="rounded-xl bg-slate-950/70 p-4 border border-slate-900 overflow-x-auto max-h-[220px]">
+            <pre class="text-xs font-mono leading-relaxed text-indigo-300" id="code-block"></pre>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Chinese Documentation Section -->
+  <section class="py-16 border-t border-white/5 bg-slate-950/30 px-6 md:px-12">
+    <div id="quickstart" class="max-w-7xl mx-auto scroll-mt-20">
+      
+      <!-- Quick Start Section -->
+      <div class="mb-16">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">1. 快速开始 (Quick Start)</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div>
+            <p class="text-slate-400 text-sm leading-relaxed mb-4">
+              你可以使用包管理器安装 wavesurfer.js，并在你的现代前端工程化项目中导入它。由于库中已经直接携带了完整的 TypeScript 类型声明，因此无需为它安装额外的包。
+            </p>
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 font-mono text-xs mb-6">
+              <span class="text-slate-500"># 使用 npm 安装</span><br>
+              <span class="text-indigo-400">npm</span> install --save wavesurfer.js
+            </div>
+            
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 font-mono text-xs">
+              <span class="text-slate-500">// ESM 代码导入</span><br>
+              <span class="text-pink-500">import</span> WaveSurfer <span class="text-pink-500">from</span> <span class="text-emerald-400">'wavesurfer.js'</span>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-slate-400 text-sm leading-relaxed mb-4">
+              如果你只想在基础的 HTML 网页中以最快速度验证功能，也可以直接引用 UNPKG 的 UMD 编译好的脚本标签。它会将库导出为全局变量 <code class="bg-slate-900 px-1 py-0.5 rounded text-indigo-400 font-mono text-xs">WaveSurfer</code>。
+            </p>
+            
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 font-mono text-xs mb-6">
+              <span class="text-slate-500">&lt;!-- 引入核心库 JS 标签 --&gt;</span><br>
+              &lt;<span class="text-pink-500">script</span> <span class="text-blue-400">src</span>=<span class="text-emerald-400">"https://unpkg.com/wavesurfer.js@7"</span>&gt;&lt;/<span class="text-pink-500">script</span>&gt;
+            </div>
+
+            <div class="bg-slate-900/60 rounded-xl p-4 border border-slate-800 font-mono text-xs">
+              <span class="text-slate-500">&lt;!-- 引入 Regions 插件标签 (可选) --&gt;</span><br>
+              &lt;<span class="text-pink-500">script</span> <span class="text-blue-400">src</span>=<span class="text-emerald-400">"https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"</span>&gt;&lt;/<span class="text-pink-500">script</span>&gt;
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Documentation Card Section -->
+      <div id="api" class="mb-16 scroll-mt-20">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">2. API 参考 (API Reference)</h2>
+        <p class="text-slate-400 text-sm leading-relaxed mb-8">
+          完整的自动生成 API 参考位于官方文档站 <a href="https://wavesurfer.xyz/docs/api" target="_blank" class="text-blue-400 hover:underline">wavesurfer.xyz/docs/api</a>。以下汇总了最常用的核心 API 组成：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Options Card -->
+          <div class="glass-panel p-6 rounded-2xl border border-white/5">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-4">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <h3 class="font-heading font-semibold text-lg text-white mb-2">核心配置项</h3>
+            <p class="text-slate-400 text-xs leading-relaxed mb-4">通过向 <code class="text-indigo-300 font-mono">WaveSurfer.create()</code> 传入配置对象来初始化波形图：</p>
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li><strong class="text-white">container</strong>: DOM 选择器或元素</li>
+              <li><strong class="text-white">waveColor</strong>: 未播放部分的波形颜色</li>
+              <li><strong class="text-white">progressColor</strong>: 已播放部分的波形颜色</li>
+              <li><strong class="text-white">barWidth</strong>: 波形条的像素宽度</li>
+              <li><strong class="text-white">barGap</strong>: 波形条之间的间隔宽度</li>
+              <li><strong class="text-white">barRadius</strong>: 波形条的圆角弧度</li>
+              <li><strong class="text-white">url</strong>: 音频文件的源文件地址</li>
+            </ul>
+          </div>
+
+          <!-- Methods Card -->
+          <div class="glass-panel p-6 rounded-2xl border border-white/5">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+            </div>
+            <h3 class="font-heading font-semibold text-lg text-white mb-2">常用控制方法</h3>
+            <p class="text-slate-400 text-xs leading-relaxed mb-4">通过 wavesurfer 实例，可以在代码中精确操控播放状态：</p>
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li><strong class="text-white">play()</strong>: 开始音频播放</li>
+              <li><strong class="text-white">pause()</strong>: 暂停当前播放</li>
+              <li><strong class="text-white">playPause()</strong>: 播放与暂停状态切换</li>
+              <li><strong class="text-white">zoom(pxPerSec)</strong>: 设置波形缩放倍率</li>
+              <li><strong class="text-white">load(url)</strong>: 加载并解析新的音频文件</li>
+              <li><strong class="text-white">destroy()</strong>: 销毁实例并解除 DOM 绑定</li>
+              <li><strong class="text-white">setOptions(opts)</strong>: 动态更新参数配置</li>
+            </ul>
+          </div>
+
+          <!-- Events Card -->
+          <div class="glass-panel p-6 rounded-2xl border border-white/5">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-4">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a3 3 0 11-5.714 0m5.714 0a3 3 0 11-5.714 0m5.714 0a3 3 0 01-5.714 0"/></svg>
+            </div>
+            <h3 class="font-heading font-semibold text-lg text-white mb-2">事件系统监听</h3>
+            <p class="text-slate-400 text-xs leading-relaxed mb-4">你可以通过订阅事件来触发业务逻辑：</p>
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li><strong class="text-white">on('ready')</strong>: 当音频解码完成且可以播放时</li>
+              <li><strong class="text-white">on('play')</strong>: 音频开始播放时触发</li>
+              <li><strong class="text-white">on('pause')</strong>: 音频暂停播放时触发</li>
+              <li><strong class="text-white">on('finish')</strong>: 音频播放完毕时触发</li>
+              <li><strong class="text-white">on('timeupdate')</strong>: 播放时间进度改变时</li>
+              <li><strong class="text-white">on('click')</strong>: 点击波形图上的某处以进行寻址</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plugins Section -->
+      <div id="plugins" class="mb-16 scroll-mt-20">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">3. 官方插件生态 (Plugins)</h2>
+        <p class="text-slate-400 text-sm leading-relaxed mb-8">
+          wavesurfer.js 团队原生维护了许多插件，允许开发者零成本扩展波形图的高级交互：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Regions (区域)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              在波形图上叠加可视化的交互选区。支持设置不同的颜色、拖动位置、拉伸大小，常用于音频分段打标、裁剪以及循环区间播放。
+            </p>
+          </div>
+          
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Timeline (时间刻度)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              在音频波形的下方或上方显示精细的标尺，显示当前播放的秒数以及刻度，极其适合音频轨道精确定位。
+            </p>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Minimap (滚动导航)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              当波形图被放大后，Minimap 会在主波形图下方渲染一个全局小图，指示出当前屏幕可见部分的框线，起到类似地图导航的作用。
+            </p>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Record (录音)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              允许通过用户的麦克风直接实时进行录音，并随着音量的接收即时绘制出当前的声波图，常用于实时音视频采集应用中。
+            </p>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Hover (悬停定位)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              当用户的鼠标滑过波形图时，会在光标下方绘制一条高亮的时间垂线，并浮现出悬停位置所对应的具体秒数，提升交互的严谨度。
+            </p>
+          </div>
+
+          <div class="p-5 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-base mb-2">Spectrogram (频谱图)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              不仅仅展示时域音量，还会结合快速傅里叶变换 (FFT) 渲染出频域频谱图，完美地分析音频不同频率段的能量分布情况。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSS ::part() Styling Section -->
+      <div class="mb-16">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">4. CSS 样式微调 (CSS Styling)</h2>
+        <p class="text-slate-400 text-sm leading-relaxed mb-6">
+          wavesurfer.js v7 被渲染至隔离的 <strong>Shadow DOM</strong> 树中。这使用户网页中原有的 CSS 样式无法干扰波形图元素。<br>
+          不过，你可以使用 CSS 的 <code class="text-indigo-300 font-mono">::part()</code> 伪元素选择器，选择并定制 Shadow DOM 中带有 <code class="text-indigo-300 font-mono">part</code> 属性的各种元素。
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+          <div class="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div>
+              <h4 class="font-heading font-semibold text-white text-base mb-4">样式覆盖示例</h4>
+              <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                在网页全局 CSS 文件中，你可以直接通过 container 的 ID 或者 class 穿透自定义波形的光标、选区背景与样式。
+              </p>
+            </div>
+            
+            <pre class="bg-slate-950/80 rounded-xl p-4 border border-slate-800 font-mono text-xs text-indigo-300 leading-relaxed">
+<span class="text-slate-500">/* 修改波形图寻址光标 */</span>
+#waveform <span class="text-pink-500">::part</span>(cursor)<span class="text-blue-400">:before</span> {
+  <span class="text-pink-500">content</span>: <span class="text-emerald-400">'🏄'</span>;
+}
+
+<span class="text-slate-500">/* 修改 Regions 音频选区的字体家族 */</span>
+#waveform <span class="text-pink-500">::part</span>(region) {
+  <span class="text-pink-500">font-family</span>: fantasy;
+}</pre>
+          </div>
+
+          <div class="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div>
+              <h4 class="font-heading font-semibold text-white text-base mb-4">关于 DOM 结构的说明</h4>
+              <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                你可以使用浏览器的开发者工具 (F12) 审查波形图的容器。在 <code class="text-slate-200">#shadow-root</code> 内部，每个带有 <code class="text-indigo-300 font-mono">part="..."</code> 属性的 DOM 节点都是合法的穿透定位点。
+              </p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs text-slate-400 space-y-2">
+              <p><strong class="text-indigo-300">part="wrapper"</strong> - 最外层波形图容器</p>
+              <p><strong class="text-indigo-300">part="canvas-container"</strong> - 绘图 Canvas 所在的盒子</p>
+              <p><strong class="text-indigo-300">part="cursor"</strong> - 随时间播放而滑动的垂直定位光标线</p>
+              <p><strong class="text-indigo-300">part="region"</strong> - 当开启选区插件后，对应的选区覆盖层 DOM</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Section -->
+      <div id="faq" class="mb-16 scroll-mt-20">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">5. 常见问题解答 (FAQ)</h2>
+        
+        <div class="flex flex-col gap-4">
+          <!-- Q1 -->
+          <div class="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">
+            <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+              <span class="font-heading font-medium text-slate-200 hover:text-white text-sm md:text-base">Q1: 我遇到了跨域 (CORS) 问题，该如何解决？</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="max-h-0 overflow-hidden transition-all duration-300 bg-slate-900/20">
+              <div class="p-6 pt-0 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                Wavesurfer 会通过 Ajax 去获取音频文件的数据并在浏览器端直接解码。这意味着你的服务器必须支持并配置了正确的 CORS 跨域请求响应头（Access-Control-Allow-Origin）。如果音频放在第三方的 CDN 上，请务必确保其响应头上包含允许你域名访问的参数。在网页端 JS 中，你是无法绕过该安全机制的。建议本地开发时启动如 Live Server 类似的本地服务器，而非直接双击 HTML 文件运行。
+              </div>
+            </div>
+          </div>
+
+          <!-- Q2 -->
+          <div class="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">
+            <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+              <span class="font-heading font-medium text-slate-200 hover:text-white text-sm md:text-base">Q2: wavesurfer 支持非常大的音频文件吗？</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="max-h-0 overflow-hidden transition-all duration-300 bg-slate-900/20">
+              <div class="p-6 pt-0 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                由于解码音频的 Web Audio API 会将完整的音频数据解压并占用较多的内存，若读取极长的音频（例如长达数小时的录音），可能导致浏览器标签页内存溢出崩溃。对此，建议使用“预解码峰值数据 (Pre-decoded Peaks)”方案。你可以通过使用后台工具（如 audiowaveform）预先提取出音频的波形包络 JSON 数据，然后在初始化 wavesurfer时作为 peaks 参数直接渲染，此时 wavesurfer 不需要下载并解码音频，极大地节约了网络与内存。
+              </div>
+            </div>
+          </div>
+
+          <!-- Q3 -->
+          <div class="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">
+            <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+              <span class="font-heading font-medium text-slate-200 hover:text-white text-sm md:text-base">Q3: 音频流 (Streaming) 能否支持波形可视化？</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="max-h-0 overflow-hidden transition-all duration-300 bg-slate-900/20">
+              <div class="p-6 pt-0 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                对于在线流媒体，因为音频文件是一个源源不断流进来的数据，wavesurfer 在解码完毕前是拿不到未来的波形数据的。流式音频仅在**配合使用预解码的峰值数据与明确的时长**时才受支持，否则将仅展示正在缓存和已播放部分的临时波形。
+              </div>
+            </div>
+          </div>
+
+          <!-- Q4 -->
+          <div class="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">
+            <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+              <span class="font-heading font-medium text-slate-200 hover:text-white text-sm md:text-base">Q4: 我的音频和波形图在播放时出现了轻微的位置偏差，如何解决？</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="max-h-0 overflow-hidden transition-all duration-300 bg-slate-900/20">
+              <div class="p-6 pt-0 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                如果音频使用了 VBR (可变比特率 Variable Bit Rate) 压缩格式，不同时间段的数据量不一样，解压缩后的物理采样位置可能会计算不准导致音画偏差。建议将音频文件转换为 CBR (恒定比特率 Constant Bit Rate) 音频重新尝试。此外，你也可以在 wavesurfer 初始化时，使用更精准的 Web Audio API 垫片 (webaudio-shim.js) 来强行校正。
+              </div>
+            </div>
+          </div>
+
+          <!-- Q5 -->
+          <div class="glass-panel rounded-2xl border border-white/5 overflow-hidden transition-all duration-300">
+            <button class="w-full text-left p-6 flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+              <span class="font-heading font-medium text-slate-200 hover:text-white text-sm md:text-base">Q5: wavesurfer 能像专业的音频剪辑软件那样进行音频剪切、混音和音效处理吗？</span>
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div class="max-h-0 overflow-hidden transition-all duration-300 bg-slate-900/20">
+              <div class="p-6 pt-0 text-xs md:text-sm text-slate-400 leading-relaxed border-t border-white/5">
+                Wavesurfer.js 本质上是一个<b>附带音频波形渲染的可视化播放器</b>。它并不是为了成为一个完整的 Web Audio DAW 音频工作站而设计的。它允许你通过导出其内部的 AudioElement 来将其接入 Web Audio 复杂的路由图中，但它本身没有、也不打算支持剪辑音频、裁剪轨道、多轨混音或直接向音频中写入音效的能力。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dev & Test Section -->
+      <div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-6 border-b border-slate-800 pb-3">6. 本地开发与测试 (Development)</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-sm mb-4 uppercase tracking-wider">开发流程</h4>
+            <div class="space-y-4 text-xs md:text-sm text-slate-400 font-mono">
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <span class="text-slate-500"># 安装依赖</span><br>
+                yarn
+              </div>
+              
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <span class="text-slate-500"># 启动热重载服务器 (端口 9090)</span><br>
+                yarn start
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+            <h4 class="font-heading font-semibold text-white text-sm mb-4 uppercase tracking-wider">测试套件</h4>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">
+              测试采用了 Cypress 框架，混合了标准的 API 端到端 (E2E) 功能测试与高精度的像素级视觉回归测试。
+            </p>
+            <div class="space-y-4 text-xs md:text-sm text-slate-400 font-mono">
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <span class="text-slate-500"># 构建生产产物</span><br>
+                yarn build
+              </div>
+              
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <span class="text-slate-500"># 启动 Cypress 进行自动化测试</span><br>
+                yarn cypress
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Golden Sponsor Bar -->
+  <section class="py-8 bg-indigo-950/20 border-t border-indigo-900/30 text-center">
+    <p class="text-xs text-slate-400">
+      黄金赞助商 💖 <a href="https://www.closedcaptioncreator.com" target="_blank" class="text-indigo-300 font-medium hover:underline">Closed Caption Creator</a> —— 专业级的 Web 字幕编辑器与音视频打标套件
+    </p>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-8 bg-slate-950 border-t border-white/5 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">
+      <p>© 2026 wavesurfer.js 中文官方文档与互动展示板. 保留所有权利.</p>
+      <div class="flex gap-6">
+        <a href="https://github.com/wavesurfer-js/wavesurfer.js" target="_blank" class="hover:text-slate-300 transition-colors">GitHub 仓库</a>
+        <a href="https://github.com/wavesurfer-js/wavesurfer.js/discussions" target="_blank" class="hover:text-slate-300 transition-colors">交流论坛</a>
+        <a href="https://github.com/sponsors/katspaugh" target="_blank" class="hover:text-slate-300 transition-colors">赞助项目</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script Modules -->
+  <script type="module">
+    import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js'
+    import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.esm.js'
+    import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.esm.js'
+    import MinimapPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/minimap.esm.js'
+    import HoverPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/hover.esm.js'
+
+    // Formatter utility
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60)
+      const secs = Math.floor(seconds % 60)
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+
+    // JS Syntax Highlighter for Dynamic Code display
+    function highlightJS(code) {
+      return code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\b(const|let|var|new|function|return|import|from)\b/g, '<span class="text-pink-500 font-semibold">$1</span>')
+        .replace(/(['"`])(.*?)\1/g, '<span class="text-emerald-400">\'$2\'</span>')
+        .replace(/\b(\d+)\b/g, '<span class="text-amber-400">$1</span>')
+        .replace(/(\/\/.*)/g, '<span class="text-slate-500 italic">$2</span>')
+        .replace(/\b(create|registerPlugin|on|play|pause|setTime|addRegion)\b/g, '<span class="text-blue-400">$1</span>')
+    }
+
+    // Default configuration state
+    const config = {
+      waveColor: '#4f46e5',
+      progressColor: '#3b82f6',
+      height: 128,
+      barWidth: 3,
+      barGap: 2,
+      barRadius: 4,
+      zoom: 50,
+      enableTimeline: true,
+      enableMinimap: true,
+      enableHover: true,
+      enableRegions: true
+    }
+
+    // Track state
+    let currentAudioUrl = './viper.mp3'
+    let currentAudioName = '电子音乐主题 (本地预设 1)'
+    let currentAudioArtist = '本地音频 - 快速解码加载'
+    let wavesurfer = null
+    let wsRegions = null
+    let dragSelectionEnabled = false
+    
+    // Default region samples to create
+    let regionsData = [
+      { id: 'reg-01', start: 1.5, end: 5.5, color: 'rgba(99, 102, 241, 0.25)', content: 'Intro 阶段' },
+      { id: 'reg-02', start: 9.0, end: 17.5, color: 'rgba(236, 72, 153, 0.25)', content: '核心旋律' }
+    ]
+
+    // Initialize WaveSurfer Instance
+    function initPlayer(seekToTime = 0) {
+      if (wavesurfer) {
+        wavesurfer.destroy()
+      }
+
+      // Show loader
+      const spinner = document.getElementById('loading-spinner')
+      spinner.classList.remove('hidden')
+
+      const plugins = []
+
+      // Timeline plugin
+      if (config.enableTimeline) {
+        plugins.push(TimelinePlugin.create({
+          container: '#wave-timeline',
+          height: 25,
+          style: {
+            color: '#94a3b8',
+            fontSize: '10px'
+          }
+        }))
+      }
+
+      // Minimap plugin
+      const minimapWrapper = document.getElementById('wave-minimap-container')
+      if (config.enableMinimap) {
+        minimapWrapper.classList.remove('hidden')
+        plugins.push(MinimapPlugin.create({
+          container: '#wave-minimap',
+          height: 35,
+          waveColor: '#475569',
+          progressColor: '#3b82f6',
+          overlayColor: 'rgba(99, 102, 241, 0.2)'
+        }))
+      } else {
+        minimapWrapper.classList.add('hidden')
+      }
+
+      // Hover plugin
+      if (config.enableHover) {
+        plugins.push(HoverPlugin.create({
+          lineColor: '#3b82f6',
+          lineWidth: 2,
+          labelBackground: '#1e293b',
+          labelColor: '#f8fafc',
+          labelSize: '10px'
+        }))
+      }
+
+      // Main wave creation
+      wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: config.waveColor,
+        progressColor: config.progressColor,
+        height: config.height,
+        barWidth: config.barWidth,
+        barGap: config.barGap,
+        barRadius: config.barRadius,
+        minPxPerSec: config.zoom,
+        url: currentAudioUrl,
+        plugins: plugins
+      })
+
+      // Setup dynamic regions
+      if (config.enableRegions) {
+        document.getElementById('regions-card').classList.remove('hidden')
+        wsRegions = wavesurfer.registerPlugin(RegionsPlugin.create())
+        
+        // Add default regions once decoded
+        wavesurfer.on('decode', () => {
+          regionsData.forEach(r => {
+            wsRegions.addRegion({
+              id: r.id,
+              start: r.start,
+              end: r.end,
+              color: r.color,
+              content: r.content,
+              drag: true,
+              resize: true
+            })
+          })
+          
+          if (dragSelectionEnabled) {
+            wsRegions.enableDragSelection({
+              color: 'rgba(59, 130, 246, 0.2)'
+            })
+          }
+          
+          updateRegionsUI()
+        })
+
+        // Region events
+        wsRegions.on('region-created', (region) => {
+          // Add to local state if not exists
+          if (!regionsData.some(r => r.id === region.id)) {
+            regionsData.push({
+              id: region.id,
+              start: region.start,
+              end: region.end,
+              color: region.color || 'rgba(99, 102, 241, 0.25)',
+              content: `新音频选区`
+            })
+          }
+          updateRegionsUI()
+        })
+
+        wsRegions.on('region-updated', (region) => {
+          const index = regionsData.findIndex(r => r.id === region.id)
+          if (index !== -1) {
+            regionsData[index].start = region.start
+            regionsData[index].end = region.end
+          }
+          updateRegionsUI()
+        })
+
+        wsRegions.on('region-clicked', (region, e) => {
+          e.stopPropagation()
+          region.play()
+        })
+
+      } else {
+        document.getElementById('regions-card').classList.add('hidden')
+        wsRegions = null
+      }
+
+      // Bind basic audio controls and events
+      wavesurfer.on('decode', () => {
+        spinner.classList.add('hidden')
+        document.getElementById('total-time').textContent = formatTime(wavesurfer.getDuration())
+        if (seekToTime > 0) {
+          wavesurfer.setTime(seekToTime)
+        }
+      })
+
+      wavesurfer.on('timeupdate', () => {
+        document.getElementById('current-time').textContent = formatTime(wavesurfer.getCurrentTime())
+      })
+
+      wavesurfer.on('play', () => {
+        document.getElementById('play-icon').classList.add('hidden')
+        document.getElementById('pause-icon').classList.remove('hidden')
+      })
+
+      wavesurfer.on('pause', () => {
+        document.getElementById('play-icon').classList.remove('hidden')
+        document.getElementById('pause-icon').classList.add('hidden')
+      })
+
+      wavesurfer.on('finish', () => {
+        document.getElementById('play-icon').classList.remove('hidden')
+        document.getElementById('pause-icon').classList.add('hidden')
+      })
+
+      // Set volume and speed to current settings
+      wavesurfer.setVolume(parseFloat(document.getElementById('volume-slider').value))
+      
+      const currentRate = parseFloat(document.querySelector('.rate-btn.bg-indigo-500\\/20').dataset.rate)
+      wavesurfer.setPlaybackRate(currentRate)
+
+      updateCodeDisplay()
+    }
+
+    // Regions list UI renderer
+    function updateRegionsUI() {
+      const placeholder = document.getElementById('regions-empty-placeholder')
+      const tableContainer = document.getElementById('regions-table-container')
+      const tbody = document.getElementById('regions-tbody')
+
+      if (!wsRegions || regionsData.length === 0) {
+        placeholder.classList.remove('hidden')
+        tableContainer.classList.add('hidden')
+        return
+      }
+
+      placeholder.classList.add('hidden')
+      tableContainer.classList.remove('hidden')
+      tbody.innerHTML = ''
+
+      regionsData.forEach((region, index) => {
+        const tr = document.createElement('tr')
+        tr.className = 'border-b border-slate-800/40 hover:bg-slate-900/20 transition-colors'
+        
+        const duration = (region.end - region.start).toFixed(2)
+        
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <input type="text" value="${region.content}" class="bg-transparent border-0 border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:ring-0 text-slate-200 text-xs w-full max-w-[120px] font-medium py-0 px-1" onchange="updateRegionLabel('${region.id}', this.value)">
+          </td>
+          <td class="py-3 px-4 font-mono text-xs text-slate-400">${region.start.toFixed(2)}s</td>
+          <td class="py-3 px-4 font-mono text-xs text-slate-400">${region.end.toFixed(2)}s</td>
+          <td class="py-3 px-4 font-mono text-xs text-slate-300 font-semibold">${duration}s</td>
+          <td class="py-3 px-4 text-right flex justify-end gap-2">
+            <button class="play-region-btn p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 active:scale-95 transition-all" data-id="${region.id}" title="播放该区间">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button class="loop-region-btn p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 active:scale-95 transition-all" data-id="${region.id}" title="循环播放该区间">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            </button>
+            <button class="delete-region-btn p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 active:scale-95 transition-all" data-id="${region.id}" title="删除区间">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </td>
+        `
+        tbody.appendChild(tr)
+      })
+
+      // Add dynamic event handlers to regions buttons
+      tbody.querySelectorAll('.play-region-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const region = wsRegions.getRegions().find(r => r.id === btn.dataset.id)
+          if (region) region.play()
+        })
+      })
+
+      tbody.querySelectorAll('.loop-region-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const region = wsRegions.getRegions().find(r => r.id === btn.dataset.id)
+          if (region) region.playLoop()
+        })
+      })
+
+      tbody.querySelectorAll('.delete-region-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const regionId = btn.dataset.id
+          const region = wsRegions.getRegions().find(r => r.id === regionId)
+          if (region) region.destroy()
+          
+          regionsData = regionsData.filter(r => r.id !== regionId)
+          updateRegionsUI()
+        })
+      })
+    }
+
+    // Expose label change handler to window context for inline event
+    window.updateRegionLabel = (id, value) => {
+      const index = regionsData.findIndex(r => r.id === id)
+      if (index !== -1) {
+        regionsData[index].content = value
+      }
+      
+      // Update visual overlay inside Wavesurfer region if possible
+      if (wsRegions) {
+        const region = wsRegions.getRegions().find(r => r.id === id)
+        if (region) {
+          region.setOptions({ content: value })
+        }
+      }
+    }
+
+    // Generate & Display Javascript instantiation code
+    function updateCodeDisplay() {
+      const codeBlock = document.getElementById('code-block')
+      
+      let pluginImports = `import WaveSurfer from 'wavesurfer.js'\n`
+      let pluginCreations = ''
+
+      if (config.enableTimeline) {
+        pluginImports += `import Timeline from 'wavesurfer.js/dist/plugins/timeline.esm.js'\n`
+        pluginCreations += `    Timeline.create({\n      container: '#wave-timeline'\n    }),\n`
+      }
+      if (config.enableMinimap) {
+        pluginImports += `import Minimap from 'wavesurfer.js/dist/plugins/minimap.esm.js'\n`
+        pluginCreations += `    Minimap.create({\n      container: '#wave-minimap',\n      height: 35,\n      waveColor: '#475569',\n      progressColor: '#3b82f6'\n    }),\n`
+      }
+      if (config.enableHover) {
+        pluginImports += `import Hover from 'wavesurfer.js/dist/plugins/hover.esm.js'\n`
+        pluginCreations += `    Hover.create({\n      lineColor: '#3b82f6',\n      lineWidth: 2\n    }),\n`
+      }
+      if (config.enableRegions) {
+        pluginImports += `import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js'\n`
+      }
+
+      let codeText = `${pluginImports}
+const wavesurfer = WaveSurfer.create({
+  container: '#waveform',
+  waveColor: '${config.waveColor}',
+  progressColor: '${config.progressColor}',
+  height: ${config.height},
+  barWidth: ${config.barWidth},
+  barGap: ${config.barGap},
+  barRadius: ${config.barRadius},
+  minPxPerSec: ${config.zoom},
+  url: '${currentAudioUrl.startsWith('blob:') ? 'local-file.mp3' : currentAudioUrl}',
+  plugins: [\n${pluginCreations}  ]
+})\n`
+
+      if (config.enableRegions) {
+        codeText += `
+// 注册选区插件
+const wsRegions = wavesurfer.registerPlugin(Regions.create())
+
+wavesurfer.on('decode', () => {
+  // 加载选区
+  wsRegions.addRegion({
+    start: 0.5,
+    end: 2.2,
+    color: 'rgba(99, 102, 241, 0.25)',
+    content: 'Intro 阶段'
+  })
+})`
+      }
+
+      codeBlock.innerHTML = highlightJS(codeText)
+    }
+
+    // Dynamic slider setting updates (without rebuilding whole instance if possible)
+    function applyDynamicOptions() {
+      if (wavesurfer) {
+        wavesurfer.setOptions({
+          waveColor: config.waveColor,
+          progressColor: config.progressColor,
+          height: config.height,
+          barWidth: config.barWidth,
+          barGap: config.barGap,
+          barRadius: config.barRadius
+        })
+      }
+      updateCodeDisplay()
+    }
+
+    // Rebuild player when plugins or zoom levels toggle
+    function rebuildPlayer() {
+      const prevTime = wavesurfer ? wavesurfer.getCurrentTime() : 0
+      initPlayer(prevTime)
+    }
+
+    // Set up listeners for Parameters panel
+    document.getElementById('opt-wave-color').addEventListener('input', (e) => {
+      config.waveColor = e.target.value
+      document.getElementById('lbl-wave-color').textContent = config.waveColor
+      applyDynamicOptions()
+    })
+
+    document.getElementById('opt-progress-color').addEventListener('input', (e) => {
+      config.progressColor = e.target.value
+      document.getElementById('lbl-progress-color').textContent = config.progressColor
+      applyDynamicOptions()
+    })
+
+    document.getElementById('opt-height').addEventListener('input', (e) => {
+      config.height = parseInt(e.target.value)
+      document.getElementById('lbl-height').textContent = `${config.height}px`
+      applyDynamicOptions()
+    })
+
+    document.getElementById('opt-bar-width').addEventListener('input', (e) => {
+      config.barWidth = parseInt(e.target.value)
+      document.getElementById('lbl-bar-width').textContent = `${config.barWidth}px`
+      applyDynamicOptions()
+    })
+
+    document.getElementById('opt-bar-gap').addEventListener('input', (e) => {
+      config.barGap = parseInt(e.target.value)
+      document.getElementById('lbl-bar-gap').textContent = `${config.barGap}px`
+      applyDynamicOptions()
+    })
+
+    document.getElementById('opt-bar-radius').addEventListener('input', (e) => {
+      config.barRadius = parseInt(e.target.value)
+      document.getElementById('lbl-bar-radius').textContent = `${config.barRadius}px`
+      applyDynamicOptions()
+    })
+
+    // Setup listener for Plugin Checkboxes
+    document.getElementById('chk-timeline').addEventListener('change', (e) => {
+      config.enableTimeline = e.target.checked
+      rebuildPlayer()
+    })
+
+    document.getElementById('chk-minimap').addEventListener('change', (e) => {
+      config.enableMinimap = e.target.checked
+      rebuildPlayer()
+    })
+
+    document.getElementById('chk-hover').addEventListener('change', (e) => {
+      config.enableHover = e.target.checked
+      rebuildPlayer()
+    })
+
+    document.getElementById('chk-regions').addEventListener('change', (e) => {
+      config.enableRegions = e.target.checked
+      rebuildPlayer()
+    })
+
+    // Playback Buttons
+    document.getElementById('btn-play-pause').addEventListener('click', () => {
+      if (wavesurfer) {
+        wavesurfer.playPause()
+      }
+    })
+
+    document.getElementById('btn-forward').addEventListener('click', () => {
+      if (wavesurfer) {
+        wavesurfer.skip(5)
+      }
+    })
+
+    document.getElementById('btn-backward').addEventListener('click', () => {
+      if (wavesurfer) {
+        wavesurfer.skip(-5)
+      }
+    })
+
+    // Zoom slider
+    document.getElementById('zoom-slider').addEventListener('input', (e) => {
+      config.zoom = parseInt(e.target.value)
+      if (wavesurfer) {
+        wavesurfer.zoom(config.zoom)
+      }
+      updateCodeDisplay()
+    })
+
+    // Volume Slider
+    document.getElementById('volume-slider').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value)
+      if (wavesurfer) {
+        wavesurfer.setVolume(val)
+      }
+      // Update mute icons
+      const highIcon = document.getElementById('volume-high-icon')
+      const muteIcon = document.getElementById('volume-mute-icon')
+      if (val === 0) {
+        highIcon.classList.add('hidden')
+        muteIcon.classList.remove('hidden')
+      } else {
+        highIcon.classList.remove('hidden')
+        muteIcon.classList.add('hidden')
+      }
+    })
+
+    // Mute toggle
+    document.getElementById('btn-mute').addEventListener('click', () => {
+      if (wavesurfer) {
+        const currentMute = wavesurfer.getMuted()
+        wavesurfer.setMuted(!currentMute)
+        
+        const highIcon = document.getElementById('volume-high-icon')
+        const muteIcon = document.getElementById('volume-mute-icon')
+        const volSlider = document.getElementById('volume-slider')
+
+        if (!currentMute) {
+          highIcon.classList.add('hidden')
+          muteIcon.classList.remove('hidden')
+          volSlider.value = 0
+        } else {
+          highIcon.classList.remove('hidden')
+          muteIcon.classList.add('hidden')
+          volSlider.value = wavesurfer.getVolume() || 0.8
+        }
+      }
+    })
+
+    // Playback Rate Button selectors
+    document.querySelectorAll('.rate-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        // Deselect active button
+        document.querySelectorAll('.rate-btn').forEach(b => {
+          b.className = 'rate-btn text-xs px-2 py-1 rounded-lg text-slate-400 hover:text-white transition-colors'
+        })
+
+        // Select new
+        btn.className = 'rate-btn text-xs px-2 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/20 transition-colors'
+        
+        const rate = parseFloat(btn.dataset.rate)
+        if (wavesurfer) {
+          wavesurfer.setPlaybackRate(rate)
+        }
+      })
+    })
+
+    // Tabs logic
+    const tabPreset = document.getElementById('tab-btn-preset')
+    const tabParam = document.getElementById('tab-btn-param')
+    const contentPreset = document.getElementById('tab-content-preset')
+    const contentParam = document.getElementById('tab-content-param')
+
+    tabPreset.addEventListener('click', () => {
+      tabPreset.className = 'flex-1 text-center text-xs py-2 rounded-xl bg-slate-900 text-white font-semibold shadow-inner border border-white/5 transition-all'
+      tabParam.className = 'flex-1 text-center text-xs py-2 rounded-xl text-slate-400 hover:text-white transition-all font-medium'
+      contentPreset.classList.remove('hidden')
+      contentParam.classList.add('hidden')
+    })
+
+    tabParam.addEventListener('click', () => {
+      tabParam.className = 'flex-1 text-center text-xs py-2 rounded-xl bg-slate-900 text-white font-semibold shadow-inner border border-white/5 transition-all'
+      tabPreset.className = 'flex-1 text-center text-xs py-2 rounded-xl text-slate-400 hover:text-white transition-all font-medium'
+      contentParam.classList.remove('hidden')
+      contentPreset.classList.add('hidden')
+    })
+
+    // Preset Audio Selectors
+    document.querySelectorAll('.preset-track-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Reset all presets active styles
+        document.querySelectorAll('.preset-track-btn').forEach(b => {
+          b.className = 'preset-track-btn w-full text-left p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex justify-between items-center'
+          const span = b.querySelector('span')
+          if (span) span.remove()
+        })
+
+        // Apply active to clicked
+        btn.className = 'preset-track-btn w-full text-left p-3.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/30 text-slate-200 transition-all flex justify-between items-center'
+        const tag = document.createElement('span')
+        tag.className = 'text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20'
+        tag.textContent = '使用中'
+        btn.appendChild(tag)
+
+        currentAudioUrl = btn.dataset.url
+        currentAudioName = btn.dataset.name
+        currentAudioArtist = btn.dataset.artist
+
+        document.getElementById('track-title').textContent = currentAudioName
+        document.getElementById('track-artist').textContent = currentAudioArtist
+
+        // Reset regions list to defaults or clear
+        regionsData = [
+          { id: 'reg-01', start: 0.5, end: 2.2, color: 'rgba(99, 102, 241, 0.25)', content: 'Intro 阶段' },
+          { id: 'reg-02', start: 3.5, end: 6.8, color: 'rgba(236, 72, 153, 0.25)', content: '核心旋律' }
+        ]
+
+        initPlayer(0)
+      })
+    })
+
+    // File Uploader logic
+    const fileUploader = document.getElementById('file-uploader')
+    const dropZone = document.getElementById('drop-zone')
+
+    dropZone.addEventListener('click', () => {
+      fileUploader.click()
+    })
+
+    fileUploader.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        processUploadedFile(e.target.files[0])
+      }
+    })
+
+    // Drag-and-drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      dropZone.classList.add('border-blue-500', 'bg-blue-500/5')
+    })
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-blue-500', 'bg-blue-500/5')
+    })
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault()
+      dropZone.classList.remove('border-blue-500', 'bg-blue-500/5')
+      if (e.dataTransfer.files.length > 0) {
+        processUploadedFile(e.dataTransfer.files[0])
+      }
+    })
+
+    function processUploadedFile(file) {
+      // Clear preset button selection
+      document.querySelectorAll('.preset-track-btn').forEach(b => {
+        b.className = 'preset-track-btn w-full text-left p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex justify-between items-center'
+        const span = b.querySelector('span')
+        if (span) span.remove()
+      })
+
+      const objectUrl = URL.createObjectURL(file)
+      currentAudioUrl = objectUrl
+      currentAudioName = file.name
+      currentAudioArtist = '本地导入音频文件'
+
+      document.getElementById('track-title').textContent = currentAudioName
+      document.getElementById('track-artist').textContent = currentAudioArtist
+
+      // Clear regions
+      regionsData = []
+
+      initPlayer(0)
+    }
+
+    // Toggle Drag Selection for Region creation
+    const dragToggleBtn = document.getElementById('btn-drag-toggle')
+    const dragStatusDot = document.getElementById('drag-status-dot')
+    const dragStatusText = document.getElementById('drag-status-text')
+
+    dragToggleBtn.addEventListener('click', () => {
+      dragSelectionEnabled = !dragSelectionEnabled
+      
+      if (dragSelectionEnabled) {
+        dragToggleBtn.className = 'text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 py-1.5 px-3.5 rounded-xl flex items-center gap-2 active:scale-95 transition-all'
+        dragStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse'
+        dragStatusText.textContent = '拖拽创建已开启'
+        if (wsRegions) {
+          wsRegions.enableDragSelection({
+            color: 'rgba(59, 130, 246, 0.2)'
+          })
+        }
+      } else {
+        dragToggleBtn.className = 'text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-1.5 px-3.5 rounded-xl flex items-center gap-2 active:scale-95 transition-all'
+        dragStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500'
+        dragStatusText.textContent = '启用拖拽创建选区'
+        rebuildPlayer()
+      }
+    })
+
+    // Random Region Addition
+    document.getElementById('btn-add-region').addEventListener('click', () => {
+      if (!wavesurfer || !wsRegions) return
+      
+      const duration = wavesurfer.getDuration()
+      if (!duration || duration <= 0) return
+
+      // Create random interval
+      const len = 2 + Math.random() * 3 // 2-5 seconds
+      const start = Math.random() * (duration - len)
+      const end = start + len
+      const id = `reg-rand-${Date.now()}`
+      
+      // Random color
+      const colors = [
+        'rgba(99, 102, 241, 0.25)', // indigo
+        'rgba(236, 72, 153, 0.25)', // pink
+        'rgba(59, 130, 246, 0.25)',  // blue
+        'rgba(16, 185, 129, 0.25)',  // emerald
+        'rgba(245, 158, 11, 0.25)'   // amber
+      ]
+      const color = colors[Math.floor(Math.random() * colors.length)]
+
+      const rObj = {
+        id: id,
+        start: start,
+        end: end,
+        color: color,
+        content: `随机区间 ${regionsData.length + 1}`
+      }
+
+      regionsData.push(rObj)
+      
+      wsRegions.addRegion({
+        id: rObj.id,
+        start: rObj.start,
+        end: rObj.end,
+        color: rObj.color,
+        content: rObj.content,
+        drag: true,
+        resize: true
+      })
+
+      updateRegionsUI()
+    })
+
+    // Copy Code to clipboard
+    const copyBtn = document.getElementById('btn-copy-code')
+    const copyIcon = document.getElementById('copy-icon')
+    const copySuccessIcon = document.getElementById('copy-success-icon')
+
+    copyBtn.addEventListener('click', () => {
+      const codeBlock = document.getElementById('code-block')
+      navigator.clipboard.writeText(codeBlock.innerText).then(() => {
+        // Toggle icons
+        copyIcon.classList.add('hidden')
+        copySuccessIcon.classList.remove('hidden')
+        
+        setTimeout(() => {
+          copyIcon.classList.remove('hidden')
+          copySuccessIcon.classList.add('hidden')
+        }, 1500)
+      }).catch(err => {
+        console.error('复制失败:', err)
+      })
+    })
+
+    // Initialize player on load
+    initPlayer(0)
+  </script>
+
+  <!-- FAQ Accordion script -->
+  <script>
+    function toggleFaq(button) {
+      const content = button.nextElementSibling;
+      const arrow = button.querySelector('svg');
+      
+      // Toggle current panel
+      if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+        content.style.maxHeight = '0px';
+        arrow.style.transform = 'rotate(0deg)';
+        button.parentElement.classList.remove('border-blue-500/30', 'bg-blue-500/[0.02]');
+      } else {
+        // Close other panels first
+        document.querySelectorAll('#faq button').forEach(btn => {
+          const c = btn.nextElementSibling;
+          const a = btn.querySelector('svg');
+          c.style.maxHeight = '0px';
+          a.style.transform = 'rotate(0deg)';
+          btn.parentElement.classList.remove('border-blue-500/30', 'bg-blue-500/[0.02]');
+        });
+
+        // Open clicked panel
+        content.style.maxHeight = content.scrollHeight + 'px';
+        arrow.style.transform = 'rotate(180deg)';
+        button.parentElement.classList.add('border-blue-500/30', 'bg-blue-500/[0.02]');
+      }
+    }
+  </script>
+</body>
+</html>
